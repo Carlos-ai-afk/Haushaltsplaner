@@ -1,0 +1,12 @@
+{
+  "name": "household-planner",
+  "version": "1.0.0",
+  "description": "Einfache Haushaltsplan-Website für Budgetverwaltung mit erweiterbarer Architektur.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}

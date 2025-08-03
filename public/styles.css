@@ -1,0 +1,256 @@
+/*
+  Basistheme für den Haushaltsplaner. Es werden CSS‑Variablen
+  verwendet, damit sich der Dark‑ und Light‑Modus einfach umschalten
+  lässt. Die Gestaltung ist bewusst luftig gehalten und nutzt
+  responsive Techniken, um sich an verschiedene Bildschirmgrößen
+  anzupassen.
+*/
+
+:root {
+  /* Light Theme Farben */
+  --bg-color: #f4f6f8;
+  --card-bg: #ffffff;
+  --header-bg: #1976d2;
+  --header-text: #ffffff;
+  --text-color: #333333;
+  --muted-text: #666666;
+  --accent-color: #1976d2;
+  --border-color: #e0e0e0;
+  --input-bg: #ffffff;
+  --input-border: #cccccc;
+  --button-bg: #1976d2;
+  --button-text: #ffffff;
+  --button-hover-bg: #115293;
+}
+
+[data-theme='dark'] {
+  /* Dark Theme Farben */
+  --bg-color: #121212;
+  --card-bg: #1e1e1e;
+  --header-bg: #0d47a1;
+  --header-text: #ffffff;
+  --text-color: #e0e0e0;
+  --muted-text: #9e9e9e;
+  --accent-color: #64b5f6;
+  --border-color: #2c2c2c;
+  --input-bg: #252525;
+  --input-border: #3c3c3c;
+  --button-bg: #1565c0;
+  --button-text: #ffffff;
+  --button-hover-bg: #0d47a1;
+}
+
+/* Grundlayout */
+body {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.app-header {
+  background-color: var(--header-bg);
+  color: var(--header-text);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 600;
+}
+
+/* Dark/Light Toggle Button */
+#themeToggle {
+  background: transparent;
+  border: none;
+  color: var(--header-text);
+  font-size: 1.25rem;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.5rem;
+  transition: background-color 0.3s;
+}
+#themeToggle:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.app-container {
+  flex: 1;
+  width: 90%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.app-section {
+  background-color: var(--card-bg);
+  border-radius: 0.75rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+  padding: 1.5rem;
+  transition: background-color 0.3s ease;
+}
+
+.app-section h2 {
+  margin-top: 0;
+  font-size: 1.35rem;
+  margin-bottom: 1rem;
+  font-weight: 600;
+}
+
+.input-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+label {
+  font-size: 0.85rem;
+  color: var(--muted-text);
+}
+
+input[type='number'],
+input[type='text'] {
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--input-border);
+  border-radius: 0.5rem;
+  background-color: var(--input-bg);
+  color: var(--text-color);
+  font-size: 1rem;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+}
+
+input[type='number']:focus,
+input[type='text']:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.2);
+}
+
+/* Buttons */
+.list-add-btn {
+  margin-top: 1rem;
+  background-color: var(--button-bg);
+  color: var(--button-text);
+  border: none;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+.list-add-btn:hover {
+  background-color: var(--button-hover-bg);
+}
+
+/* Liste der Fixkosten, Einnahmen, Ausgaben */
+.list-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.list-item {
+  display: grid;
+  grid-template-columns: 2fr 1fr auto;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.list-item input[type='text'] {
+  /* description */
+}
+.list-item input[type='number'] {
+  /* amount */
+}
+
+.remove-btn {
+  background: transparent;
+  border: none;
+  color: var(--accent-color);
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 0.4rem;
+  transition: background-color 0.2s;
+}
+.remove-btn:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+[data-theme='dark'] .remove-btn:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Kategorien */
+.categories-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.category-card {
+  background-color: var(--input-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.category-card-header {
+  padding: 0.6rem 0.8rem;
+  font-weight: 600;
+  color: #ffffff;
+  font-size: 1rem;
+}
+
+.category-card-body {
+  padding: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+/* Zusammenfassung */
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.2rem 0;
+  font-size: 0.95rem;
+}
+
+.summary-total {
+  margin-top: 0.6rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.app-footer {
+  text-align: center;
+  padding: 1.5rem 1rem 2rem;
+  font-size: 0.85rem;
+  color: var(--muted-text);
+}
+
+@media (max-width: 640px) {
+  .app-header h1 {
+    font-size: 1.5rem;
+  }
+  .summary-row {
+    font-size: 0.9rem;
+  }
+}
