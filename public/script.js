@@ -1,369 +1,234 @@
-/*
-  Zentrales Skript für die Haushaltsplaner‑App. Hier werden alle
-  dynamischen Elemente erzeugt und verwaltet, Daten im
-  localStorage gespeichert und die Berechnungen für die Übersicht
-  durchgeführt. Die Anwendung ist so aufgebaut, dass sie später
-  einfach erweitert werden kann (z. B. API‑Anbindung).
-*/
+const STORAGE_KEY = 'taskDistributorPreferences';
+const TASK_CACHE_KEY = 'taskDistributorCachedTasks';
 
-// Definition der standardmäßigen Kategorien mit Farben zur
-// Visualisierung. Diese Struktur kann später problemlos erweitert
-// werden, ohne dass der Rest der Anwendung angepasst werden muss.
-const categories = [
-  { name: 'Essen', color: '#ffb74d' },
-  { name: 'Hobbys', color: '#90caf9' },
-  { name: 'Miete', color: '#a5d6a7' },
-  { name: 'Sparen', color: '#fff176' },
-  { name: 'Verträge', color: '#81c784' },
-  { name: 'Sonstiges', color: '#ce93d8' },
-];
+const taskForm = document.getElementById('taskForm');
+const titleInput = document.getElementById('taskTitle');
+const assigneesInput = document.getElementById('taskAssignees');
+const departmentInput = document.getElementById('taskDepartment');
+const openTasksContainer = document.getElementById('openTasks');
+const doneTasksContainer = document.getElementById('doneTasks');
+const themeToggle = document.getElementById('themeToggle');
 
-// Globale State‑Variable. Alle Eingaben des Nutzers werden hier
-// gesammelt und in localStorage persistiert. Dadurch bleiben die
-// Daten beim Neuladen der Seite erhalten.
 let state = {
-  netIncome: 0,
-  fixedCosts: [],
-  categoryBudgets: {},
-  incomes: [],
-  expenses: [],
+  tasks: [],
   darkMode: false,
 };
 
-// IDs für neue Einträge. Diese werden erhöht, um eindeutige IDs
-// innerhalb der Arrays zu erzeugen. Beim Laden aus localStorage
-// werden sie entsprechend angepasst.
-let nextId = 1;
+function loadPreferences() {
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (!saved) {
+    return;
+  }
 
-// Hilfsfunktion zum Laden des gespeicherten Zustands aus dem
-// localStorage. Ist noch kein Zustand vorhanden, wird der
-// Standardzustand verwendet.
-function loadState() {
   try {
-    const saved = JSON.parse(localStorage.getItem('plannerData'));
-    if (saved && typeof saved === 'object') {
-      state = {
-        netIncome: saved.netIncome || 0,
-        fixedCosts: Array.isArray(saved.fixedCosts)
-          ? saved.fixedCosts
-          : [],
-        categoryBudgets: saved.categoryBudgets || {},
-        incomes: Array.isArray(saved.incomes) ? saved.incomes : [],
-        expenses: Array.isArray(saved.expenses) ? saved.expenses : [],
-        darkMode: !!saved.darkMode,
-      };
-      // Ermittle die höchste verwendete ID, um Überschneidungen zu
-      // vermeiden
-      const allIds = []
-        .concat(state.fixedCosts, state.incomes, state.expenses)
-        .map((item) => item.id);
-      const maxId = allIds.length > 0 ? Math.max(...allIds) : 0;
-      nextId = maxId + 1;
+    const parsed = JSON.parse(saved);
+    state.darkMode = !!parsed.darkMode;
+  } catch {
+    state.darkMode = false;
+  }
+}
+
+function savePreferences() {
+  localStorage.setItem(
+    STORAGE_KEY,
+    JSON.stringify({
+      darkMode: state.darkMode,
+    })
+  );
+}
+
+function loadCachedTasks() {
+  const saved = localStorage.getItem(TASK_CACHE_KEY);
+  if (!saved) {
+    return;
+  }
+
+  try {
+    const parsed = JSON.parse(saved);
+    if (Array.isArray(parsed)) {
+      state.tasks = parsed;
     }
-  } catch (e) {
-    console.error('Fehler beim Laden der gespeicherten Daten:', e);
+  } catch {
+    state.tasks = [];
   }
 }
 
-// Hilfsfunktion zum Speichern des Zustands in localStorage
-function saveState() {
-  localStorage.setItem('plannerData', JSON.stringify(state));
+function cacheTasks() {
+  localStorage.setItem(TASK_CACHE_KEY, JSON.stringify(state.tasks));
 }
 
-// Formatierungsfunktion für Eurobeträge im deutschen Format
-function formatCurrency(amount) {
-  return amount.toLocaleString('de-DE', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+function applyTheme() {
+  document.documentElement.setAttribute(
+    'data-theme',
+    state.darkMode ? 'dark' : 'light'
+  );
+  themeToggle.textContent = state.darkMode ? '☀️' : '🌙';
+}
+
+function parseAssignees(value) {
+  return value
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+}
+
+function createStatus(text, isError = false) {
+  const p = document.createElement('p');
+  p.className = isError ? 'status error' : 'status';
+  p.textContent = text;
+  return p;
+}
+
+function createTaskItem(task) {
+  const item = document.createElement('article');
+  item.className = 'task-item';
+
+  const textWrap = document.createElement('div');
+  const title = document.createElement('div');
+  title.className = 'task-title';
+  title.textContent = task.title;
+
+  const meta = document.createElement('div');
+  meta.className = 'task-meta';
+  meta.innerHTML = `<span class="badge">${task.department}</span>Zuständig: ${task.assignees.join(', ')}`;
+
+  textWrap.append(title, meta);
+
+  const actions = document.createElement('div');
+  actions.className = 'task-actions';
+
+  const statusButton = document.createElement('button');
+  statusButton.className = task.done ? '' : 'done';
+  statusButton.textContent = task.done ? 'Auf offen setzen' : 'Erledigt';
+  statusButton.addEventListener('click', async () => {
+    await updateTaskStatus(task.id, !task.done);
   });
-}
 
-// Renderfunktionen für die unterschiedlichen Bereiche
-
-function renderNetIncome() {
-  const input = document.getElementById('netIncomeInput');
-  input.value = state.netIncome !== undefined ? state.netIncome : '';
-}
-
-function renderFixedCosts() {
-  const list = document.getElementById('fixedCostsList');
-  list.innerHTML = '';
-  state.fixedCosts.forEach((item) => {
-    const row = document.createElement('div');
-    row.className = 'list-item';
-    row.dataset.id = item.id;
-
-    const descInput = document.createElement('input');
-    descInput.type = 'text';
-    descInput.placeholder = 'Beschreibung';
-    descInput.value = item.description;
-    descInput.addEventListener('input', (e) => {
-      item.description = e.target.value;
-      saveState();
-    });
-
-    const amountInput = document.createElement('input');
-    amountInput.type = 'number';
-    amountInput.min = '0';
-    amountInput.step = '0.01';
-    amountInput.placeholder = '0,00';
-    amountInput.value = item.amount;
-    amountInput.addEventListener('input', (e) => {
-      const val = parseFloat(e.target.value);
-      item.amount = isNaN(val) ? 0 : val;
-      saveState();
-      updateSummary();
-    });
-
-    const removeBtn = document.createElement('button');
-    removeBtn.className = 'remove-btn';
-    removeBtn.innerHTML = '×';
-    removeBtn.title = 'Entfernen';
-    removeBtn.addEventListener('click', () => {
-      state.fixedCosts = state.fixedCosts.filter((fc) => fc.id !== item.id);
-      saveState();
-      renderFixedCosts();
-      updateSummary();
-    });
-
-    row.appendChild(descInput);
-    row.appendChild(amountInput);
-    row.appendChild(removeBtn);
-    list.appendChild(row);
+  const deleteButton = document.createElement('button');
+  deleteButton.textContent = 'Löschen';
+  deleteButton.addEventListener('click', async () => {
+    await deleteTask(task.id);
   });
+
+  actions.append(statusButton, deleteButton);
+  item.append(textWrap, actions);
+
+  return item;
 }
 
-function renderCategories() {
-  const container = document.getElementById('categoriesContainer');
+function renderTaskList(container, tasks, emptyText) {
   container.innerHTML = '';
-  categories.forEach((cat) => {
-    const card = document.createElement('div');
-    card.className = 'category-card';
 
-    const header = document.createElement('div');
-    header.className = 'category-card-header';
-    header.style.backgroundColor = cat.color;
-    header.textContent = cat.name;
-
-    const body = document.createElement('div');
-    body.className = 'category-card-body';
-
-    const label = document.createElement('label');
-    label.htmlFor = `cat-${cat.name}`;
-    label.textContent = 'Budget (EUR)';
-
-    const input = document.createElement('input');
-    input.type = 'number';
-    input.min = '0';
-    input.step = '0.01';
-    input.id = `cat-${cat.name}`;
-    input.placeholder = '0,00';
-    const val = state.categoryBudgets[cat.name];
-    input.value = typeof val === 'number' ? val : '';
-    input.addEventListener('input', (e) => {
-      const v = parseFloat(e.target.value);
-      if (!isNaN(v)) {
-        state.categoryBudgets[cat.name] = v;
-      } else {
-        delete state.categoryBudgets[cat.name];
-      }
-      saveState();
-      updateSummary();
-    });
-
-    body.appendChild(label);
-    body.appendChild(input);
-    card.appendChild(header);
-    card.appendChild(body);
-    container.appendChild(card);
-  });
-}
-
-function renderIncomeEntries() {
-  const list = document.getElementById('incomeEntriesList');
-  list.innerHTML = '';
-  state.incomes.forEach((item) => {
-    const row = document.createElement('div');
-    row.className = 'list-item';
-    row.dataset.id = item.id;
-
-    const descInput = document.createElement('input');
-    descInput.type = 'text';
-    descInput.placeholder = 'Beschreibung';
-    descInput.value = item.description;
-    descInput.addEventListener('input', (e) => {
-      item.description = e.target.value;
-      saveState();
-    });
-
-    const amountInput = document.createElement('input');
-    amountInput.type = 'number';
-    amountInput.min = '0';
-    amountInput.step = '0.01';
-    amountInput.placeholder = '0,00';
-    amountInput.value = item.amount;
-    amountInput.addEventListener('input', (e) => {
-      const val = parseFloat(e.target.value);
-      item.amount = isNaN(val) ? 0 : val;
-      saveState();
-      updateSummary();
-    });
-
-    const removeBtn = document.createElement('button');
-    removeBtn.className = 'remove-btn';
-    removeBtn.innerHTML = '×';
-    removeBtn.title = 'Entfernen';
-    removeBtn.addEventListener('click', () => {
-      state.incomes = state.incomes.filter((inc) => inc.id !== item.id);
-      saveState();
-      renderIncomeEntries();
-      updateSummary();
-    });
-
-    row.appendChild(descInput);
-    row.appendChild(amountInput);
-    row.appendChild(removeBtn);
-    list.appendChild(row);
-  });
-}
-
-function renderExpenseEntries() {
-  const list = document.getElementById('expenseEntriesList');
-  list.innerHTML = '';
-  state.expenses.forEach((item) => {
-    const row = document.createElement('div');
-    row.className = 'list-item';
-    row.dataset.id = item.id;
-
-    const descInput = document.createElement('input');
-    descInput.type = 'text';
-    descInput.placeholder = 'Beschreibung';
-    descInput.value = item.description;
-    descInput.addEventListener('input', (e) => {
-      item.description = e.target.value;
-      saveState();
-    });
-
-    const amountInput = document.createElement('input');
-    amountInput.type = 'number';
-    amountInput.min = '0';
-    amountInput.step = '0.01';
-    amountInput.placeholder = '0,00';
-    amountInput.value = item.amount;
-    amountInput.addEventListener('input', (e) => {
-      const val = parseFloat(e.target.value);
-      item.amount = isNaN(val) ? 0 : val;
-      saveState();
-      updateSummary();
-    });
-
-    const removeBtn = document.createElement('button');
-    removeBtn.className = 'remove-btn';
-    removeBtn.innerHTML = '×';
-    removeBtn.title = 'Entfernen';
-    removeBtn.addEventListener('click', () => {
-      state.expenses = state.expenses.filter((exp) => exp.id !== item.id);
-      saveState();
-      renderExpenseEntries();
-      updateSummary();
-    });
-
-    row.appendChild(descInput);
-    row.appendChild(amountInput);
-    row.appendChild(removeBtn);
-    list.appendChild(row);
-  });
-}
-
-// Funktion zum Aktualisieren der Zusammenfassung
-function updateSummary() {
-  const net = parseFloat(state.netIncome) || 0;
-  const fixedTotal = state.fixedCosts.reduce((sum, fc) => sum + (parseFloat(fc.amount) || 0), 0);
-  const incomesTotal = state.incomes.reduce((sum, inc) => sum + (parseFloat(inc.amount) || 0), 0);
-  const expensesTotal = state.expenses.reduce((sum, exp) => sum + (parseFloat(exp.amount) || 0), 0);
-  const budgetsTotal = categories.reduce((sum, cat) => {
-    const val = state.categoryBudgets[cat.name];
-    return sum + (typeof val === 'number' && !isNaN(val) ? val : 0);
-  }, 0);
-
-  const remaining = net + incomesTotal - fixedTotal - expensesTotal - budgetsTotal;
-
-  document.getElementById('summaryNetIncome').innerHTML = `${formatCurrency(net)}&nbsp;€`;
-  document.getElementById('summaryFixedCosts').innerHTML = `${formatCurrency(fixedTotal)}&nbsp;€`;
-  document.getElementById('summaryIncomes').innerHTML = `${formatCurrency(incomesTotal)}&nbsp;€`;
-  document.getElementById('summaryExpenses').innerHTML = `${formatCurrency(expensesTotal)}&nbsp;€`;
-  document.getElementById('summaryBudgets').innerHTML = `${formatCurrency(budgetsTotal)}&nbsp;€`;
-  const remElem = document.getElementById('summaryRemaining');
-  remElem.innerHTML = `${formatCurrency(remaining)}&nbsp;€`;
-  remElem.style.color = remaining < 0 ? '#c62828' : 'inherit';
-}
-
-// Dark/Light Mode umschalten
-function updateTheme() {
-  const body = document.body;
-  if (state.darkMode) {
-    body.setAttribute('data-theme', 'dark');
-    document.getElementById('themeToggle').textContent = '☀️';
-  } else {
-    body.removeAttribute('data-theme');
-    document.getElementById('themeToggle').textContent = '🌙';
+  if (tasks.length === 0) {
+    const empty = document.createElement('p');
+    empty.className = 'empty';
+    empty.textContent = emptyText;
+    container.appendChild(empty);
+    return;
   }
+
+  tasks.forEach((task) => container.appendChild(createTaskItem(task)));
 }
 
-// Eventregistrierung für Buttons und Inputs
-function registerEventHandlers() {
-  // Nettoeinkommen Input
-  document.getElementById('netIncomeInput').addEventListener('input', (e) => {
-    const val = parseFloat(e.target.value);
-    state.netIncome = isNaN(val) ? 0 : val;
-    saveState();
-    updateSummary();
-  });
+function render() {
+  const openTasks = state.tasks.filter((task) => !task.done);
+  const doneTasks = state.tasks.filter((task) => task.done);
 
-  // Fixkosten hinzufügen
-  document.getElementById('addFixedCostBtn').addEventListener('click', () => {
-    state.fixedCosts.push({ id: nextId++, description: '', amount: 0 });
-    saveState();
-    renderFixedCosts();
-    updateSummary();
-  });
-
-  // Einnahme hinzufügen
-  document.getElementById('addIncomeEntryBtn').addEventListener('click', () => {
-    state.incomes.push({ id: nextId++, description: '', amount: 0 });
-    saveState();
-    renderIncomeEntries();
-    updateSummary();
-  });
-
-  // Ausgabe hinzufügen
-  document.getElementById('addExpenseEntryBtn').addEventListener('click', () => {
-    state.expenses.push({ id: nextId++, description: '', amount: 0 });
-    saveState();
-    renderExpenseEntries();
-    updateSummary();
-  });
-
-  // Dark/Light Toggle
-  document.getElementById('themeToggle').addEventListener('click', () => {
-    state.darkMode = !state.darkMode;
-    saveState();
-    updateTheme();
-  });
+  renderTaskList(openTasksContainer, openTasks, 'Keine offenen Aufgaben.');
+  renderTaskList(doneTasksContainer, doneTasks, 'Noch nichts erledigt.');
 }
 
-// Initialisierung der Anwendung
-function init() {
-  loadState();
-  renderNetIncome();
-  renderFixedCosts();
-  renderCategories();
-  renderIncomeEntries();
-  renderExpenseEntries();
-  updateSummary();
-  updateTheme();
-  registerEventHandlers();
+async function fetchTasks() {
+  try {
+    const response = await fetch('/api/tasks');
+    if (!response.ok) {
+      throw new Error('Server nicht erreichbar');
+    }
+
+    const data = await response.json();
+    state.tasks = Array.isArray(data.tasks) ? data.tasks : [];
+    cacheTasks();
+  } catch {
+    // Fallback auf lokal gecachte Daten
+    loadCachedTasks();
+    openTasksContainer.prepend(
+      createStatus('Offline/Fallback: lokale Daten angezeigt.', true)
+    );
+  }
+
+  render();
 }
 
-// Initialisierung starten, sobald das DOM geladen ist
-document.addEventListener('DOMContentLoaded', init);
+async function createTask(payload) {
+  const response = await fetch('/api/tasks', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Aufgabe konnte nicht erstellt werden.');
+  }
+
+  await fetchTasks();
+}
+
+async function updateTaskStatus(id, done) {
+  const response = await fetch(`/api/tasks/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ done }),
+  });
+
+  if (!response.ok) {
+    throw new Error('Status konnte nicht aktualisiert werden.');
+  }
+
+  await fetchTasks();
+}
+
+async function deleteTask(id) {
+  const response = await fetch(`/api/tasks/${id}`, {
+    method: 'DELETE',
+  });
+
+  if (!response.ok) {
+    throw new Error('Aufgabe konnte nicht gelöscht werden.');
+  }
+
+  await fetchTasks();
+}
+
+taskForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+
+  const title = titleInput.value.trim();
+  const department = departmentInput.value;
+  const assignees = parseAssignees(assigneesInput.value);
+
+  if (!title || !department || assignees.length === 0) {
+    return;
+  }
+
+  try {
+    await createTask({ title, department, assignees });
+    taskForm.reset();
+    departmentInput.value = 'WB1';
+    titleInput.focus();
+  } catch (error) {
+    openTasksContainer.prepend(createStatus(error.message, true));
+  }
+});
+
+themeToggle.addEventListener('click', () => {
+  state.darkMode = !state.darkMode;
+  savePreferences();
+  applyTheme();
+});
+
+loadPreferences();
+loadCachedTasks();
+applyTheme();
+render();
+fetchTasks();

@@ -3,105 +3,65 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Haushaltsplan – Budgetverwaltung</title>
-    <!-- Schriftarten für eine moderne Optik -->
-    <link
-      rel="preconnect"
-      href="https://fonts.gstatic.com"
-      crossorigin
-    />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
+    <title>Aufgabenverteiler</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <header class="app-header">
-      <h1>Haushaltsplaner</h1>
-      <button id="themeToggle" aria-label="Darstellung wechseln">
-        🌙
-      </button>
+      <h1>Aufgabenverteiler (WB1-WB5)</h1>
+      <button id="themeToggle" aria-label="Dark-Mode umschalten">🌙</button>
     </header>
+
     <main class="app-container">
-      <!-- Nettoeinkommen -->
-      <section id="netIncomeSection" class="app-section">
-        <h2>Monatliches Nettoeinkommen</h2>
-        <div class="input-row">
-          <label for="netIncomeInput">Nettoeinkommen (EUR)</label>
+      <section class="card">
+        <h2>Neue Aufgabe erstellen</h2>
+        <form id="taskForm" class="task-form">
+          <label for="taskTitle">Aufgabe</label>
           <input
-            type="number"
-            id="netIncomeInput"
-            min="0"
-            step="0.01"
-            placeholder="0,00"
+            id="taskTitle"
+            name="taskTitle"
+            type="text"
+            placeholder="z. B. Daily-Report prüfen"
+            required
           />
-        </div>
+
+          <label for="taskDepartment">Abteilung</label>
+          <select id="taskDepartment" name="taskDepartment" required>
+            <option value="WB1">WB1</option>
+            <option value="WB2">WB2</option>
+            <option value="WB3">WB3</option>
+            <option value="WB4">WB4</option>
+            <option value="WB5">WB5</option>
+          </select>
+
+          <label for="taskAssignees">Kollegen (mehrere möglich)</label>
+          <input
+            id="taskAssignees"
+            name="taskAssignees"
+            type="text"
+            placeholder="z. B. Alex, Mina, Sam"
+            required
+          />
+
+          <button type="submit">Aufgabe hinzufügen</button>
+        </form>
       </section>
-      <!-- Fixkosten -->
-      <section id="fixedCostsSection" class="app-section">
-        <h2>Monatliche Fixkosten</h2>
-        <div id="fixedCostsList" class="list-container"></div>
-        <button id="addFixedCostBtn" class="list-add-btn">
-          Fixkosten hinzufügen
-        </button>
+
+      <section class="card">
+        <h2>Offen</h2>
+        <div id="openTasks" class="task-list"></div>
       </section>
-      <!-- Budgetkategorien -->
-      <section id="categoriesSection" class="app-section">
-        <h2>Budgetkategorien</h2>
-        <div id="categoriesContainer" class="categories-grid"></div>
-      </section>
-      <!-- Zusätzliche Einnahmen -->
-      <section id="incomeEntriesSection" class="app-section">
-        <h2>Weitere Einnahmen</h2>
-        <div id="incomeEntriesList" class="list-container"></div>
-        <button id="addIncomeEntryBtn" class="list-add-btn">
-          Einnahme hinzufügen
-        </button>
-      </section>
-      <!-- Ausgaben -->
-      <section id="expenseEntriesSection" class="app-section">
-        <h2>Ausgaben</h2>
-        <div id="expenseEntriesList" class="list-container"></div>
-        <button id="addExpenseEntryBtn" class="list-add-btn">
-          Ausgabe hinzufügen
-        </button>
-      </section>
-      <!-- Zusammenfassung -->
-      <section id="summarySection" class="app-section">
-        <h2>Übersicht</h2>
-        <div class="summary-row">
-          <span>Nettoeinkommen:</span>
-          <span id="summaryNetIncome">0,00&nbsp;€</span>
-        </div>
-        <div class="summary-row">
-          <span>Fixkosten:</span>
-          <span id="summaryFixedCosts">0,00&nbsp;€</span>
-        </div>
-        <div class="summary-row">
-          <span>Einnahmen:</span>
-          <span id="summaryIncomes">0,00&nbsp;€</span>
-        </div>
-        <div class="summary-row">
-          <span>Ausgaben:</span>
-          <span id="summaryExpenses">0,00&nbsp;€</span>
-        </div>
-        <div class="summary-row">
-          <span>Budget Kategorien:</span>
-          <span id="summaryBudgets">0,00&nbsp;€</span>
-        </div>
-        <div class="summary-row summary-total">
-          <strong>Freies Budget:</strong>
-          <strong id="summaryRemaining">0,00&nbsp;€</strong>
-        </div>
+
+      <section class="card">
+        <h2>Erledigt</h2>
+        <div id="doneTasks" class="task-list"></div>
       </section>
     </main>
+
     <footer class="app-footer">
-      <p>
-        Dieses Tool speichert deine Daten nur lokal im Browser. Später ist eine
-        Erweiterung mit Benutzerkonten und Bankanbindungen möglich.
-      </p>
+      Für alle Geräte im Firmennetz nutzbar, wenn alle denselben Server-Link öffnen. Nach Reload sieht jeder den aktuellen Stand.
     </footer>
+
     <script src="script.js"></script>
   </body>
 </html>
